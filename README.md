@@ -213,7 +213,18 @@ fulltclash-windows-amd64 为 Windows-amd64 所支持的
 ### Docker启动
 [./docker/ 目录](https://github.com/AirportR/FullTclash/tree/dev/docker)
 ### 为程序设置进程守护(Linux)
-由于Linux系统特性，关闭ssh连接后，前台程序会被关闭。您需要设置进程守护，才能在后台不间断地运行程序。具体方法Google搜索即可。
+由于Linux系统特性，关闭ssh连接后，前台程序会被关闭。您需要设置进程守护，才能在后台不间断地运行程序。
+
+方法：
+
+修改 fulltclash.service 文件中的 WorkingDirectory=你的FullTclash路径
+
+mv fulltclash.service /etc/systemd/system/
+
+systemctl daemon-reload
+
+然后就可以通过 systemctl start fulltclash 后台启动守护进程了
+
 ## 交流探讨
 我们欢迎各方朋友提出针对性的反馈：
 - [TG更新发布频道](https://t.me/FullTClash)  

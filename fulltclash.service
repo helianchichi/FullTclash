@@ -1,0 +1,14 @@
+[Unit]
+Description=fulltclash
+After=rc-local.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/FullTclash
+ExecStart=python3 main.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

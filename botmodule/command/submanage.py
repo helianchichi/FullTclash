@@ -106,7 +106,7 @@ async def sub(_, message):
             if await check.check_user(message, admin, isalert=False):
                 subinfo = config.get_sub()
                 subinfo_json = {key: value['url'] for key, value in subinfo.items()}
-                item = json.dumps(subinfo_json, indent=4)
+                item = json.dumps(subinfo_json, indent=4, ensure_ascii=False)
                 await message.reply(str(item))
             else:
                 subinfo = config.get_sub()

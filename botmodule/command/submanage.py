@@ -1,3 +1,4 @@
+import json
 import asyncio
 import hashlib
 import pyrogram.types
@@ -104,9 +105,8 @@ async def sub(_, message):
         else:
             if await check.check_user(message, admin, isalert=False):
                 subinfo = config.get_sub()
-                item = []
-                for k in subinfo.keys():
-                    item.append(k)
+                subinfo_json = {key: value['url'] for key, value in subinfo.items()}
+                item = json.dumps(subinfo_json, indent=4)
                 await message.reply(str(item))
             else:
                 subinfo = config.get_sub()

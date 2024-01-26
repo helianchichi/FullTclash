@@ -23,11 +23,6 @@ async def getSubInfo(_, message):
         status = False
         if not url:
             if arglen == 1:
-                await back_message.edit_text("使用方法: /traffic & /subinfo & /流量查询 + <订阅链接> & <订阅名> & all [管理]获取所有流量信息")
-                await asyncio.sleep(5)
-                await back_message.delete()
-                return
-            elif "all" == arg[1]:
                 if await check_user(message, admin, isalert=False):
                     # 管理员至高权限
                     status = True
@@ -46,7 +41,7 @@ async def getSubInfo(_, message):
                         subcl = SubCollector(url)
                         subcl.cvt_enable = False
                         subinfo = await subcl.getSubTraffic()
-                    await printSubNameInfo(subname, subinfo, sub_message, call_time)
+                    await printSubNameInfo(subname, subinfo, sub_message, call_time, url)
                 await back_message.edit_text("所有流量信息查询完毕")
                 return
             else:
@@ -76,17 +71,18 @@ async def getSubInfo(_, message):
         subcl.cvt_enable = False
         subinfo = await subcl.getSubTraffic()
         if status:
-            await printSubNameInfo(arg[1], subinfo, back_message, call_time)
+            await printSubNameInfo(arg[1], subinfo, back_message, call_time, url)
         else:
             await printUrlInfo(url, subinfo, back_message, call_time)
     except RPCError as r:
         logger.error(str(r))
 
-async def printSubNameInfo(subname, subinfo, back_message, call_time):
+async def printSubNameInfo(subname, subinfo, back_message, call_time, url):
     if subinfo:
         rs = subinfo[3] - subinfo[2]  # 剩余流量
         subinfo_text = f"""
 ☁️订阅名称：{subname}
+🔗订阅链接：{url}
 ⬆️已用上行：{round(subinfo[0], 3)} GB
 ⬇️已用下行：{round(subinfo[1], 3)} GB
 🚗总共使用：{round(subinfo[2], 3)} GB

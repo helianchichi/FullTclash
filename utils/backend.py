@@ -4,7 +4,7 @@ import copy
 import socket
 import time
 
-from collections import Counter
+from collections import Counter, OrderedDict
 from operator import itemgetter
 from typing import Union, Callable, Coroutine, Tuple
 
@@ -291,52 +291,31 @@ class SpeedCore(Basecore):
             workers: int = 0,
     ) -> tuple:
         st = Speedtest()
-        try:
-            from ftclib import speed_test
-        except ImportError:
-            speed_test = None
-        if speed_test is not None:
-            pass
-            # workers = workers if workers else st.thread
-            # print("rust黑科技，启动!")
-            #
-            # res = await speed_test(proxy_host, proxy_port, st.speedurl, workers)
-            # spmean = sum(res) / len(res) if res else 0
-            # spmax = max(res) if res else 0
-            # if spmean > spmax:
-            #     spmean, spmax = spmax, spmean
-            # return (
-            #     spmean,
-            #     spmax,
-            #     res,
-            #     10,
-            # )
-        else:
-            download_semaphore = asyncio.Semaphore(workers if workers else Speedtest().thread)
-            async with download_semaphore:
-                urls = st.speedurl
-                # logger.debug(f"Url: {url}")
-                thread = workers if workers else st.thread
-                logger.info(f"Running st_async, workers: {thread}.")
-                tasks = [
-                    asyncio.create_task(SpeedCore.fetch(st, urls, proxy_host, proxy_port, buffer))
-                    for _ in range(thread)
-                ]
-                await asyncio.wait(tasks)
-                st.show_progress_full()
-                spmean = st.total_red / st.time_used if st.time_used else 0
-                spmax = st.max_speed
-                if spmean > spmax:
-                    spmean, spmax = spmax, spmean
-                if st.time_used:
-                    return (
-                        spmean,
-                        spmax,
-                        st.speed_list[1:],
-                        st.total_red,
-                    )
+        download_semaphore = asyncio.Semaphore(workers if workers else Speedtest().thread)
+        async with download_semaphore:
+            urls = st.speedurl
+            # logger.debug(f"Url: {url}")
+            thread = workers if workers else st.thread
+            logger.info(f"Running st_async, workers: {thread}.")
+            tasks = [
+                asyncio.create_task(SpeedCore.fetch(st, urls, proxy_host, proxy_port, buffer))
+                for _ in range(thread)
+            ]
+            await asyncio.wait(tasks)
+            st.show_progress_full()
+            spmean = st.total_red / st.time_used if st.time_used else 0
+            spmax = st.max_speed
+            if spmean > spmax:
+                spmean, spmax = spmax, spmean
+            if st.time_used:
+                return (
+                    spmean,
+                    spmax,
+                    st.speed_list[1:],
+                    st.total_red,
+                )
 
-            return 0, 0, [], 0
+        return 0, 0, [], 0
 
     # 以下为 另一部分
     async def batch_speed(self, nodelist: list, port: int = 11220, proxy_obj: Union[proxy.FullTCore] = None,
@@ -583,6 +562,7 @@ class ScriptCore(Basecore):
 
     async def core(self, proxyinfo: list, **kwargs):
         info = {}  # 存放测试结果
+        test_sort = GCONFIG.config.get('test_sort', ["0", "1"])
         media_items = kwargs.get('script', None) or kwargs.get('test_items', None) or kwargs.get('media_items', None)
         test_items = collector.media_items if media_items is None else media_items
         test_items = cleaner.addon.mix_script(test_items, False)
@@ -627,6 +607,15 @@ class ScriptCore(Basecore):
         # 任务信息
         info['task'] = kwargs.get('task', {})
         # 保存结果
+        sorted_dict = OrderedDict()
+        for key in test_sort:
+            if key in info:
+                sorted_dict[key] = info[key]
+             
+        for key in info:
+            if key not in sorted_dict:
+                sorted_dict[key] = info[key]
+        info = dict(sorted_dict)
         self.saveresult(info)
         return info
 
@@ -683,10 +672,24 @@ class TopoCore(Basecore):
         print(counter0)
         ipstack_lists = list(ipstack_list.values())
         ipclus = list(ipclu.values())
+        hosts = list(inboundinfo.keys())
+        for i, t in enumerate(hosts):
+            if ipstack_lists[i] == "N/A" and t:
+                if ":" in t:
+                    ipstack_lists[i] = "6"
+                elif "." in t:
+                    ipstack_lists[i] = "4"
+                else:
+                    pass
+            elif ipstack_lists[i] == "4" and ":" in t:
+                ipstack_lists[i] = "46"
+            elif ipstack_lists[i] == "6" and "." in t:
+                ipstack_lists[i] = "46"
+            else:
+                pass
         info['栈'] = ipstack_lists
         if nodename and inboundinfo and cl:
             # 拿地址，已经转换了域名为ip,hosts变量去除了N/A
-            hosts = list(inboundinfo.keys())
 
             if _data:
                 code = []
@@ -796,12 +799,6 @@ class TopoCore(Basecore):
             return info, hosts, cl
 
     async def batch_topo(self, nodename: list, pool: dict, proxy_obj: Union[proxy.FullTCore] = None):
-        # 获取位置
-        try:
-            from utils.geo import get_region
-        except ImportError:
-            pass
-
         resdata = []
         ipstackes = []
         progress = 0
@@ -1039,49 +1036,4 @@ def select_core(index: Union[int, str], progress_func: Tuple[Union[Callable, Cor
 
 
 if __name__ == '__main__':
-    import sys
-    import getopt
-
-    check_init()
-    # os.chdir(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
-    # sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
-    help_text = """
-Usage(使用帮助):
- -h, --help     Display the help info.
-                输出帮助
- -f, --file     Subscription file path
-                订阅文件路径
- -c, --core     Select the test type(speed,topo,script)
-                测试类型(speed,topo,script)
-"""
-    config_path = ''
-    core = None
-    try:
-        opts, _args = getopt.getopt(sys.argv[1:], "hf:c:", ["help", "file=", "core="])
-    except getopt.GetoptError:
-        print(help_text)
-        sys.exit(1)
-    for opt, arg in opts:
-        if opt in ('-h', '--help'):
-            print(help_text)
-            sys.exit()
-        elif opt in ("-c", "--core"):
-            if arg == 'speed':
-                core = SpeedCore()
-            elif arg == 'script':
-                core = ScriptCore()
-            elif arg == 'topo':
-                core = TopoCore()
-            else:
-                raise TypeError("Unknown test type, please input again.\n未知的测试类型，请重新输入!")
-        elif opt in ("-f", "--file"):
-            config_path = arg
-    if core is None and not config_path:
-        raise ValueError("Unable start the tasks,please input the config path.\n请输入配置文件路径")
-    with open(config_path, 'r', encoding='utf-8') as fp:
-        data = cleaner.ClashCleaner(fp)
-        my_proxies = data.getProxies()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    resd = loop.run_until_complete(core.core(my_proxies))
-    print(resd)
+    pass

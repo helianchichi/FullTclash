@@ -70,7 +70,7 @@ class Basecore:
         return [0 for _ in range(nodenum)] if rtt == 0 else rtt
 
     def join_proxy(self, proxyinfo: list, filters: bool = False):
-        self._config.setProxies(proxyinfo)
+        self._config.set_proxies(proxyinfo)
         if filters:
             self._config.node_filter(self._pre_include_text, self._pre_exclude_text, issave=False)  # 从配置文件过滤文件
 
@@ -255,7 +255,7 @@ class SpeedCore(Basecore):
     async def fetch(self: Speedtest, urls: list, host: str, port: int, buffer: int):
         try:
             async with aiohttp.ClientSession(
-                    headers={"User-Agent": "FullTclash"},
+                    headers={"User-Agent": "FullTClash"},
                     connector=ProxyConnector(host=host, port=port),
             ) as session:
                 flag = 0
@@ -1012,11 +1012,11 @@ def check_init():
     if "logs" in dirs and "results" in dirs:
         return
     logger.info("检测到初次使用，正在初始化...")
-    if not os.path.isdir('../logs'):
-        os.mkdir("../logs")
+    if not os.path.isdir('./logs'):
+        os.mkdir("./logs")
         logger.info("创建文件夹: logs 用于保存日志")
-    if not os.path.isdir('../results'):
-        os.mkdir("../results")
+    if not os.path.isdir('./results'):
+        os.mkdir("./results")
         logger.info("创建文件夹: results 用于保存测试结果")
 
 
